@@ -63,7 +63,10 @@ main = do
     let b = map S.fromList a
     print $ S.fromList b
     print $ length $ S.fromList b
+    print threeWJ
 
+threeWJ :: [[Int]]
+threeWJ = [[n, n+1, 0] | n <- [1..12]] ++ [[n, n+2, 0] | n <- [1..11]]
 
 someFunc :: Int -> [[Int]] -> [[Int]]
 someFunc 12 acc = acc
