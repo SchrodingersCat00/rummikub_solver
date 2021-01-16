@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
+
 module DataTypes
     ( Tile
     , Color
@@ -9,6 +10,7 @@ module DataTypes
     ) where
 
 import qualified Data.Set as S
+import Data.List (intercalate)
 
 data Color
     = Red
@@ -56,25 +58,88 @@ instance (Bounded a, Bounded b, Enum a, Enum b) => Enum (Set a b) where
     toEnum n = Set []
     fromEnum (Set l) = 0
 
+{-
+Sets ordering (classic rummikub)
+
+run,three,NJ   (44)
+run,four,NJ    (40)
+run,five,NJ    (36)
+group,three,NJ (52)
+group,four,NJ  (13)
+
+run,three,1J   (92)
+run,four,1J    (124)
+run,five,1J    (148)
+group,three,1J (78)
+group,four,1J  (52)
+
+run,three,2J   (52)
+run,four,2J    (132)
+run,five,2J    (233) -> (232?)
+group,three,2J (0)
+group,four,2J  (78)
+-}
+
 main :: IO ()
 main = do
-    -- print $ length ([[x, y, z] | z <- [minBound .. maxBound], y <- [minBound .. maxBound], x <- [minBound .. maxBound]] :: [[Tile RumNum Color]])
-    let a = someFunc' 1 []
-    let b = map S.fromList a
-    print $ S.fromList b
-    print $ length $ S.fromList b
-    print threeWJ
+    let t = [ embedColors $ n0J 3
+            , embedColors $ n0J 4
+            , embedColors $ n0J 5
+            , g0J 3
+            , g0J 4
+            , embedColors $ n1J 3
+            , embedColors $ n1J 4
+            , embedColors $ n1J 5
+            , g1J 3
+            , g1J 4
+            , embedColors $ n2J 3
+            , embedColors $ n2J 4
+            , embedColors $ n2J 5
+            , g2J 3
+            , g2J 4
+            ]
+    writeTFile (concat t)
+    print $ map length t
 
-threeWJ :: [[Int]]
-threeWJ = [[n, n+1, 0] | n <- [1..12]] ++ [[n, n+2, 0] | n <- [1..11]]
+writeTFile :: [[(Char, Int)]] -> IO ()
+writeTFile seqs = do
+    writeFile "out" tString
+  where
+    tString = intercalate "\n" $ map (concatMap tileToString) seqs
 
-someFunc :: Int -> [[Int]] -> [[Int]]
-someFunc 12 acc = acc
-someFunc n acc = someFunc (n + 1) (map (0:) (subsets 2 [n..(n+2)]))++acc
+tileToString :: (Char, Int) -> String
+tileToString (c, i) = c:show i
 
-someFunc' :: Int -> [[Int]] -> [[Int]]
-someFunc' 10 acc = acc
-someFunc' n acc = someFunc' (n + 1) (map (0:) (subsets 4 [n..(n+4)]))++acc
+g0J :: Int -> [[(Char, Int)]]
+g0J l = [[(c, n) | c <- cs] | n <- [1..13], cs <- subsets l ['a', 'b', 'c', 'd']]
+
+g1J :: Int -> [[(Char, Int)]]
+g1J l = [[(c, n) | c <- cs] ++ [('a', 0)] | n <- [1..13], cs <- subsets (l-1) ['a', 'b', 'c', 'd']]
+
+g2J :: Int -> [[(Char, Int)]]
+g2J l
+    | l == 3 = []
+    | otherwise =  [[(c, n) | c <- cs] ++ [('a', 0), ('b', 0)] | n <- [1..13], cs <- subsets (l-2) ['a', 'b', 'c', 'd']]
+
+n0J :: Int -> [[Int]]
+n0J l = [[n+l | l <- [0..l]] | n <- [1..(14-l)]]
+
+n1J :: Int -> [[Int]]
+n1J l = removeDuplicates $ map removeDuplicates $ n1J' l 1 1 []
+
+n2J :: Int -> [[Int]]
+n2J l = removeDuplicates $ map removeDuplicates $ n1J' l 2 1 []
+
+embedColors :: [[Int]] -> [[(Char, Int)]]
+embedColors l = [[(c, r) | r <- s] | s <- l, c <- ['a', 'b', 'c', 'd']]
+
+n1J' :: Int -> Int -> Int -> [[Int]] -> [[Int]]
+n1J' l j n acc
+    | n == 15 - l = acc
+    | otherwise  = n1J' l j (n + 1) (map (0:) (subsets (l-j) [n..(n+(l-1))] )) ++ acc
+
+removeDuplicates :: (Ord a) => [a] -> [a]
+removeDuplicates = S.toList . S.fromList
 
 subsets :: Int -> [a] -> [[a]]
 subsets 0 _ = [[]]

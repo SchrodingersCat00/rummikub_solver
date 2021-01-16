@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - utility-ht
 - containers
+- hmatrix-glpk
 
 library:
   source-dirs: src
