@@ -6,18 +6,19 @@ module DataTypes
     , Color
     , RumNum
     , Set
-    , main
+    , getSets
     ) where
 
 import qualified Data.Set as S
 import Data.List (intercalate)
+import Data.List.Split (splitOn)
 
 data Color
     = Red
     | Black
     | Blue
     | Orange
-    deriving ( Enum, Bounded, Show )
+    deriving ( Enum, Bounded, Show, Eq )
 
 data RumNum
     = One
@@ -33,12 +34,12 @@ data RumNum
     | Eleven
     | Twelve
     | Thirteen
-    deriving ( Enum, Bounded, Show )
+    deriving ( Enum, Bounded, Show, Eq )
 
 data Tile a b -- Number Color
     = Tile a b
     | Joker
-    deriving ( Show )
+    deriving ( Show, Eq )
 
 instance (Bounded a, Bounded b) => Bounded (Tile a b) where
     minBound = Tile minBound minBound
@@ -80,8 +81,8 @@ group,three,2J (0)
 group,four,2J  (78)
 -}
 
-main :: IO ()
-main = do
+getSets :: IO [[Tile RumNum Color]]
+getSets = do
     let t = [ embedColors $ n0J 3
             , embedColors $ n0J 4
             , embedColors $ n0J 5
@@ -99,13 +100,28 @@ main = do
             , g2J 4
             ]
     writeTFile (concat t)
-    print $ map length t
+    -- print $ map length t
+    readTFile "out"
 
 writeTFile :: [[(Char, Int)]] -> IO ()
 writeTFile seqs = do
     writeFile "out" tString
   where
-    tString = intercalate "\n" $ map (concatMap tileToString) seqs
+    tString = intercalate "\n" $ map (intercalate "," . map tileToString) seqs
+
+readTFile :: String -> IO [[Tile RumNum Color]]
+readTFile f = do
+    l <- lines <$> readFile f
+    return $ map parseLine l
+  where
+    parseLine l = map parseTile (splitOn "," l)
+    parseTile t = let c = (getColor . head) t
+                      n = read $ tail t :: Int
+                  in if n == 0 then Joker else Tile (toEnum (n - 1) :: RumNum) c
+    getColor 'a' = Black
+    getColor 'b' = Red
+    getColor 'c' = Blue
+    getColor 'd' = Orange
 
 tileToString :: (Char, Int) -> String
 tileToString (c, i) = c:show i
@@ -122,13 +138,13 @@ g2J l
     | otherwise =  [[(c, n) | c <- cs] ++ [('a', 0), ('b', 0)] | n <- [1..13], cs <- subsets (l-2) ['a', 'b', 'c', 'd']]
 
 n0J :: Int -> [[Int]]
-n0J l = [[n+l | l <- [0..l]] | n <- [1..(14-l)]]
+n0J l = [[n+l | l <- [0..(l-1)]] | n <- [1..(14-l)]]
 
 n1J :: Int -> [[Int]]
 n1J l = removeDuplicates $ map removeDuplicates $ n1J' l 1 1 []
 
 n2J :: Int -> [[Int]]
-n2J l = removeDuplicates $ map removeDuplicates $ n1J' l 2 1 []
+n2J l = removeDuplicates $ n2J' l 2 1 []
 
 embedColors :: [[Int]] -> [[(Char, Int)]]
 embedColors l = [[(c, r) | r <- s] | s <- l, c <- ['a', 'b', 'c', 'd']]
@@ -137,6 +153,11 @@ n1J' :: Int -> Int -> Int -> [[Int]] -> [[Int]]
 n1J' l j n acc
     | n == 15 - l = acc
     | otherwise  = n1J' l j (n + 1) (map (0:) (subsets (l-j) [n..(n+(l-1))] )) ++ acc
+
+n2J' :: Int -> Int -> Int -> [[Int]] -> [[Int]]
+n2J' l j n acc
+    | n == 15 - l = acc
+    | otherwise  = n2J' l j (n + 1) (map ([0, 0]++) (subsets (l-j) [n..(n+(l-1))] )) ++ acc
 
 removeDuplicates :: (Ord a) => [a] -> [a]
 removeDuplicates = S.toList . S.fromList

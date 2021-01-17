@@ -24,6 +24,8 @@ dependencies:
 - utility-ht
 - containers
 - hmatrix-glpk
+- split
+- MissingH
 
 library:
   source-dirs: src

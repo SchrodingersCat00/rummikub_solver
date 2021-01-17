@@ -33,9 +33,11 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      MissingH
+    , base >=4.7 && <5
     , containers
     , hmatrix-glpk
+    , split
     , utility-ht
   default-language: Haskell2010
 
@@ -47,10 +49,12 @@ executable rummikub-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      MissingH
+    , base >=4.7 && <5
     , containers
     , hmatrix-glpk
     , rummikub
+    , split
     , utility-ht
   default-language: Haskell2010
 
@@ -63,9 +67,11 @@ test-suite rummikub-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      MissingH
+    , base >=4.7 && <5
     , containers
     , hmatrix-glpk
     , rummikub
+    , split
     , utility-ht
   default-language: Haskell2010
