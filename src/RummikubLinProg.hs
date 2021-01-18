@@ -14,17 +14,23 @@ main :: IO ()
 main = do
     -- probs = [y_1..y_53,x_1..x_1173]
     let prob = Maximize (replicate 53 1 ++ replicate 1173 0)
-    let rack = [toEnum 0 :: Tile RumNum Color, toEnum 0, toEnum 12, toEnum 52]
-    let table = [toEnum 1 :: Tile RumNum Color, toEnum 2, toEnum 4, toEnum 8]
-    -- print rack
+    -- let rack = map toEnum [12, 7, 11]
+    -- let table = map toEnum [0, 4, 8, 1,
+    -- let table = map toEnum [29, 5, 9, 2, 6, 10]
+    -- let rack = map toEnum [1, 37, 8, 10, 14, 22, 23, 20, 50]
+    -- let rack = map toEnum []
+    -- let table = map toEnum [29, 30, 31, 44, 45, 46, 47, 32, 33, 34, 35, 39, 43, 47, 51, 40, 41, 42, 34, 38, 42]
+    let rack = map toEnum [52, 0, 4, 52]
+    let table = map toEnum [0, 4, 8, 12]
+    print rack
+    print table
     sets <- getSets
     -- print sets
     let constr = getConstraints sets rack table
     -- print $ sum $ map (tileInSet sets 8) [0..1172]
     let sol = simplex prob constr []
-    -- print sol
+    print sol
     print $ parseLPResult sets sol
-    print $ countInSet rack (toEnum 52)
 
 parseLPResult :: [[Tile RumNum Color]] -> Solution -> [(Int, [Tile RumNum Color])]
 parseLPResult usets (Optimal (_, vars)) = map (\(i, _) -> (i, usets!!i)) $ filter (\(_, v) -> v == 1.0 || v == 2.0) (zip [0..1172] (drop 53 vars))
@@ -33,7 +39,7 @@ parseLPResult _ _ = error "Result not found"
 tileInSet :: [[Tile RumNum Color]] -> Int -> Int -> Int
 tileInSet ss tid sid
     | tile `elem` set = 1
-    | otherwise = 0
+    | otherwise       = 0
   where
     set = ss!!sid
     tile = toEnum tid :: Tile RumNum Color
@@ -41,7 +47,7 @@ tileInSet ss tid sid
 getConstraints :: UniqueSets -> Rack -> Table -> Constraints
 getConstraints s r t = Sparse (c1 ++ c2 ++ c3 ++ c4)
   where
-    c1 = [((-1.0,i+1):[(fromIntegral (tileInSet s i j), 53+j+1) | j <- [0..1172]]) :==: fromIntegral (countInSet t (toEnum i)) | i <- [0..52]]
+    c1 = [((-1.0,i+1):[(fromIntegral (countInSet (s!!j) (toEnum i)), 53+j+1) | j <- [0..1172]]) :==: fromIntegral (countInSet t (toEnum i)) | i <- [0..52]]
     c2 = [[1#(i+1)] :<=: fromIntegral (countInSet r (toEnum i)) | i <- [0..52]]
     c3 = [[1#(53+j+1)] :&: (0, 2) | j <- [0..1172]]
     c4 = [[1#i] :&: (0, 2) | i <- [1..53]]

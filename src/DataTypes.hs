@@ -5,7 +5,6 @@ module DataTypes
     ( Tile
     , Color
     , RumNum
-    , Set
     , getSets
     ) where
 
@@ -52,12 +51,6 @@ instance forall a b. (Enum a, Enum b, Bounded a, Bounded b) => Enum (Tile a b) w
                            (toEnum (n `mod` (fromEnum (maxBound :: b) + 1)))
     fromEnum (Tile x y) = fromEnum x * (fromEnum (maxBound :: b) + 1) + fromEnum y
     fromEnum Joker = (fromEnum (maxBound :: a) + 1) * (fromEnum (maxBound :: b) + 1)
-
-newtype Set a b = Set [Tile a b]
-
-instance (Bounded a, Bounded b, Enum a, Enum b) => Enum (Set a b) where
-    toEnum n = Set []
-    fromEnum (Set l) = 0
 
 {-
 Sets ordering (classic rummikub)
