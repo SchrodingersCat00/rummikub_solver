@@ -27,7 +27,6 @@ library
   exposed-modules:
       DataTypes
       Rummikub
-      RummikubLinProg
   other-modules:
       Paths_rummikub
   hs-source-dirs:

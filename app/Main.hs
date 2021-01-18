@@ -1,6 +1,6 @@
 module Main where
 
-import qualified RummikubLinProg as R
+import qualified Rummikub as R
 
 main :: IO ()
 main = R.main

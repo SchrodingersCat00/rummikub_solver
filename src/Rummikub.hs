@@ -2,51 +2,123 @@ module Rummikub
     ( main
     ) where
 
-import qualified Data.List.Key as DLK
-import Data.List (splitAt)
+import DataTypes ( Tile, RumNum, Color, getSets )
+import Data.List.Utils (countElem)
+-- import Prelude hiding (Num(..))
 
-data Color
-    = Red
-    | Black
-    | Blue
-    | Orange
-    deriving (Show)
+import Control.Monad.LPMonad
+    ( equalTo,
+      execLPM,
+      setDirection,
+      setObjective,
+      setVarKind,
+      varBds,
+      varEq,
+      varLeq )
+import Data.LinearProgram.Common
+    ( Direction(Max), LP, linCombination, LinFunc, VarKind(IntVar) )
+import Data.LinearProgram ( mipDefaults, glpSolveVars )
+import qualified Data.Map as M
+import Control.Monad ( forM_, when )
 
-type Tile = (Int, Color)
-type SimpleTile = Int
-type Board a = [[a]]
-type Hand a = [a]
+type Rack = [Tile RumNum Color]
+type Table = [Tile RumNum Color]
+type UniqueSets = [[Tile RumNum Color]]
+
+yVars :: [String]
+yVars = ['y':show x | x <- [1..53]]
+
+xVars :: [String]
+xVars = ['x':show x | x <- [1..1173]]
+
+objFun :: LinFunc String Int
+objFun = linCombination (zip (repeat 1) yVars)
+-- objFun = linCombination [(10, "x1"), (6, "x2"), (4, "x3")]
+
+lp :: UniqueSets -> Rack -> Table -> LP String Int
+lp sets r t = execLPM $ do
+    setDirection Max
+    setObjective objFun
+    forM_ xVars $ \x ->
+        do  varBds x 0 2
+            setVarKind x IntVar
+
+    forM_ (zip yVars [0..]) $ \(l, y) ->
+        do  varBds l 0 2
+            let r_i = countInSet r (toEnum y)
+            -- upper bound can't be the same as lower for some reason
+            when (r_i == 0) (varEq l 0)
+            when (r_i /= 0) (varLeq l r_i)
+            setVarKind l IntVar
+            equalTo (linCombination (someHelp sets y)) (countInSet t (toEnum y))
+
+someHelp :: UniqueSets -> Int -> [(Int, String)]
+someHelp sets tid = zip [if x == tid then -1 else 0 | x <- [0..52]] yVars ++ zip [ countInSet (sets!!sid) (toEnum tid) | sid <- [0..1172]] xVars
 
 main :: IO ()
 main = do
-    print $ bestNextBoard [[1, 2, 3], [5, 6, 7]] [4, 6, 7, 5]
+    -- probs = [y_1..y_53,x_1..x_1173]
+    -- let prob = Maximize (replicate 53 1 ++ replicate 1173 0)
+    -- let rack = map toEnum [12, 7, 11]
+    -- let rack = map toEnum []
+    -- let table = map toEnum [29, 30, 31, 44, 45, 46, 47, 32, 33, 34, 35, 39, 43, 47, 51, 40, 41, 42, 34, 38, 42]
+    sets <- getSets
+    -- let table = map toEnum [0, 4, 8, 1,
+    -- let table = map toEnum [29, 5, 9, 2, 6, 10]
+    -- let rack = map toEnum [1, 37, 8, 10, 14, 22, 23, 20, 50]
+    -- let rack = map toEnum [52, 0, 4, 52]
+    -- let table = map toEnum [0, 4, 8, 12]
+    let rack = map toEnum [8, 16, 52, 1, 2]
+    let table = map toEnum [0, 4]
+    print rack
+    print table
+    let constr = lp sets rack table
+    -- print constr
+    result <- glpSolveVars mipDefaults constr
+    -- print sets
+    print $ parseLPResult sets result
 
-bestNextBoard :: (Num a, Eq a) => Board a -> Hand a -> Board a
-bestNextBoard b h = (DLK.maximum l . filter f) (possibleBoards b h)
-  where
-    f = all (\x -> length x >= 3 && isSequence x)
-    l = length . concat
+parseVarString :: String -> (Int, Char)
+parseVarString s = let v = head s
+                       n = (read . tail) s :: Int
+                    in (n, v)
 
-isSequence :: (Eq a, Num a) => [a] -> Bool
-isSequence [x, y] = x + 1 == y
-isSequence (x:y:xs) = x + 1 == y && isSequence (y:xs)
-isSequence _ = False
+parseLPResult sets (_, Just (v, d)) = M.foldrWithKey (\k v l -> let (n, c) = parseVarString k in if v > 0 && c == 'x' then sets!!(n-1):l else l) [] d
 
-possibleBoards :: Board a -> Hand a -> [Board a]
-possibleBoards b = foldl something (boardSplits b)
+countInSet :: Table -> Tile RumNum Color -> Int
+countInSet t tl = let c = countElem tl t in
+                        if c > 2 then
+                            error "tile is more than twice on the table"
+                        else c
 
-something :: [Board a] -> a -> [Board a]
-something bs t = concatMap (`addTile` t) bs
+{-
+    source: https://www.semanticscholar.org/paper/Solving-Rummikub-Problems-by-Integer-Linear-Hertog-Hulshof/ab00c1bfe35e21a2edb7287234af03f74a3ee3ae
 
-addTile :: Board a -> a -> [Board a]
-addTile [] t = []
-addTile (s:ss) t = ((t:s) : ss):((s ++ [t]) : ss):[s:b | b <- addTile ss t]
+    LP: specification
+    indices
+    -------
+    i = type of tile defined by color and number
+    j = number of set (run or group)
 
-boardSplits :: Board a -> [Board a]
-boardSplits [] = [[]]
-boardSplits l@(s:ss) = let brdsplts = boardSplits ss
-                           sqsplts = seqSplits s
-                       in [s:rs | rs <- brdsplts] ++ [f:s:rs | (f, s) <- sqsplts, rs <- brdsplts]
+    parameters
+    ----------
+    s_ij = tile i appears 0, 1 or 2 times in set j
+    t_i = tile i is 0, 1 or 2 times on the table
+    r_i = tile i is 0, 1 or 2 times on your rack
 
-seqSplits :: [a] -> [([a], [a])]
-seqSplits l = map (`splitAt` l) [1..length l - 1]
+    variables
+    ---------
+    x_j = set j can be placed 0, 1 or 2 times on the table
+    y_i = tile i can be placed 0, 1 or 2 times from your rack on the table
+
+    objective
+    ---------
+    maximize sum of y_i for all i [1..53]
+
+    constraints
+    -----------
+    s_i1*x_1 + ... + s_i1173*x1173 = t_i + y_i forall i
+    y_i <= r_i forall i
+    x_j el {0, 1, 2} forall j
+    y_i el {0, 1, 2} forall i
+-}
