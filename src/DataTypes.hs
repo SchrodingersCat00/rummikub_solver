@@ -122,7 +122,7 @@ parseTileSeq = parseLine
     parseLine l = map parseTile (splitOn "," l)
     parseTile t = let c = (getColor . head) t
                       n = read $ tail t :: Int
-                  in if n == 0 then Joker else Tile (toEnum (n - 1) :: RumNum) c
+                  in if head t == 'j' then Joker else Tile (toEnum (n - 1) :: RumNum) c
     getColor :: Char -> Color
     getColor c = case M.lookup c colorMap of
                         Just x -> x
@@ -132,22 +132,23 @@ formatTileSeq :: [Tile RumNum Color] -> String
 formatTileSeq = intercalate "," . map tileToString
 
 tileToString :: Tile RumNum Color -> String
-tileToString Joker = "j0"
+tileToString Joker = "j"
 tileToString (Tile a b) = tileToString' (colorChars!!fromEnum b, fromEnum a)
 
 tileToString' :: (Char, Int) -> String
+tileToString' ('j', i) = "j"
 tileToString' (c, i) = c:show i
 
 g0J :: Int -> [[(Char, Int)]]
 g0J l = [[(c, n) | c <- cs] | n <- [1..13], cs <- subsets l colorChars]
 
 g1J :: Int -> [[(Char, Int)]]
-g1J l = [[(c, n) | c <- cs] ++ [('a', 0)] | n <- [1..13], cs <- subsets (l-1) colorChars]
+g1J l = [[(c, n) | c <- cs] ++ [('j', 0)] | n <- [1..13], cs <- subsets (l-1) colorChars]
 
 g2J :: Int -> [[(Char, Int)]]
 g2J l
     | l == 3 = []
-    | otherwise =  [[(c, n) | c <- cs] ++ [('a', 0), ('b', 0)] | n <- [1..13], cs <- subsets (l-2) colorChars]
+    | otherwise =  [[(c, n) | c <- cs] ++ [('j', 0), ('j', 0)] | n <- [1..13], cs <- subsets (l-2) colorChars]
 
 n0J :: Int -> [[Int]]
 n0J l = [[n+l | l <- [0..(l-1)]] | n <- [1..(14-l)]]
@@ -159,7 +160,7 @@ n2J :: Int -> [[Int]]
 n2J l = removeDuplicates $ n2J' l 2 1 []
 
 embedColors :: [[Int]] -> [[(Char, Int)]]
-embedColors l = [[(c, r) | r <- s] | s <- l, c <- colorChars]
+embedColors l = [[if r == 0 then ('j', 0) else (c, r) | r <- s] | s <- l, c <- colorChars]
 
 n1J' :: Int -> Int -> Int -> [[Int]] -> [[Int]]
 n1J' l j n acc

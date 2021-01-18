@@ -26,13 +26,13 @@ type Rack = [Tile RumNum Color]
 type Table = [Tile RumNum Color]
 type UniqueSets = [[Tile RumNum Color]]
 
-testData = [ ( parseTileSeq "j0,k1,k2,j0" -- rack
+testData = [ ( parseTileSeq "j,k1,k2,j" -- rack
              , parseTileSeq "k1,k2,k3,k4"  -- table
              , [ [Tile One Black,Tile Two Black,Tile Three Black,Tile Four Black]
                , [Joker,Joker,Tile One Black,Tile Two Black]
                ]              --expected
              )
-           , ( parseTileSeq "k3,k5,j0,r1,o1"
+           , ( parseTileSeq "k3,k5,j,r1,o1"
              , parseTileSeq "k1,k2"
              , [ [Joker,Tile Two Black,Tile Three Black,Tile Five Black]
                , [Tile One Black,Tile One Red,Tile One Orange]

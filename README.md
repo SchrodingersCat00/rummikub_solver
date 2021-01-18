@@ -13,6 +13,7 @@ stack run -- RACK_TILES TABLE_TILES
 
 a set of tiles is defined as follows:
 ```
-<COLOR_CHAR><1-13>,<COLOR_CHAR><1-13>,...
+TILE = <COLOR_CHAR><1-13> | j
 COLOR_CHAR = k | r | o | b
+TILES = TILE,TILE,...
 ```
