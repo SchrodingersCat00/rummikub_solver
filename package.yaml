@@ -26,6 +26,8 @@ dependencies:
 - hmatrix-glpk
 - split
 - MissingH
+- glpk-hs
+- gasp
 
 library:
   source-dirs: src

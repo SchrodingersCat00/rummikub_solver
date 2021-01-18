@@ -36,6 +36,8 @@ library
       MissingH
     , base >=4.7 && <5
     , containers
+    , gasp
+    , glpk-hs
     , hmatrix-glpk
     , split
     , utility-ht
@@ -52,6 +54,8 @@ executable rummikub-exe
       MissingH
     , base >=4.7 && <5
     , containers
+    , gasp
+    , glpk-hs
     , hmatrix-glpk
     , rummikub
     , split
@@ -70,6 +74,8 @@ test-suite rummikub-test
       MissingH
     , base >=4.7 && <5
     , containers
+    , gasp
+    , glpk-hs
     , hmatrix-glpk
     , rummikub
     , split
