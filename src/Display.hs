@@ -41,6 +41,8 @@ displaySolution :: Rack -> Table -> UniqueSets -> IO ()
 displaySolution r t sol = do
     displayHeader "Rack" $ displayTileSeq r
     displayHeader "Table" $ displayTileSeq t
-    displayHeader "Solution" $ forM_ sol $ \seq -> do
-        displayTileSeq seq
-        putStr " "
+    displayHeader "Solution" $ do
+        forM_ sol $ \seq -> do
+            displayTileSeq seq
+            putStr " "
+        putStr $ "(" <> show ((sum . map length) sol - length t) <> " tiles placed)"
