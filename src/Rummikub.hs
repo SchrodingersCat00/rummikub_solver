@@ -4,8 +4,9 @@ module Rummikub
     , parseLPResult
     ) where
 
-import DataTypes ( Tile, RumNum, Color, getSets )
+import DataTypes ( Tile, RumNum, Color, getSets, parseTileSeq )
 import Data.List.Utils (countElem)
+import System.Environment(getArgs)
 -- import Prelude hiding (Num(..))
 
 import Control.Monad.LPMonad
@@ -58,8 +59,6 @@ someHelp sets tid = zip [if x == tid then -1 else 0 | x <- [0..52]] yVars ++ zip
 
 main :: IO ()
 main = do
-    -- probs = [y_1..y_53,x_1..x_1173]
-    -- let prob = Maximize (replicate 53 1 ++ replicate 1173 0)
     -- let rack = map toEnum [12, 7, 11]
     -- let rack = map toEnum []
     -- let table = map toEnum [29, 30, 31, 44, 45, 46, 47, 32, 33, 34, 35, 39, 43, 47, 51, 40, 41, 42, 34, 38, 42]
@@ -67,16 +66,14 @@ main = do
     -- let table = map toEnum [0, 4, 8, 1,
     -- let table = map toEnum [29, 5, 9, 2, 6, 10]
     -- let rack = map toEnum [1, 37, 8, 10, 14, 22, 23, 20, 50]
-    let rack = map toEnum [52, 0, 4, 52]
-    let table = map toEnum [0, 4, 8, 12]
+    args <- getArgs
+    let [rack, table] = map parseTileSeq args
     -- let rack = map toEnum [8, 16, 52, 1, 2]
     -- let table = map toEnum [0, 4]
     print rack
     print table
     let constr = lp sets rack table
-    -- print constr
     result <- glpSolveVars mipDefaults constr
-    -- print sets
     print $ parseLPResult sets result
 
 parseVarString :: String -> (Int, Char)

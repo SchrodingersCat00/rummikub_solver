@@ -6,18 +6,21 @@ module DataTypes
     , Color(..)
     , RumNum(..)
     , getSets
+    , createSets
+    , parseTileSeq
     ) where
 
 import qualified Data.Set as S
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
+import qualified Data.Map as M
 import Control.Applicative ((<*>))
 
 data Color
-    = Red
-    | Black
-    | Blue
+    = Black
+    | Red
     | Orange
+    | Blue
     deriving ( Enum, Bounded, Show, Eq, Ord )
 
 data RumNum
@@ -75,13 +78,24 @@ group,three,2J (0)
 group,four,2J  (78)
 -}
 
+colorChars :: [Char]
+colorChars = ['k', 'r', 'o', 'b']
+
+colorMap :: M.Map Char Color
+colorMap = M.fromList (zip colorChars [Black ..])
+
 getSets :: IO [[Tile RumNum Color]]
 getSets = do
-    let rs = embedColors <$> ([n0J, n1J, n2J] <*> [3..5]) --runs
-    let gs = [g0J, g1J, g2J] <*> [3, 4] -- groups
-    writeTFile (concat (rs ++ gs))
-    -- print $ map length t
+    let t = createSets
+    writeTFile (concat t)
     readTFile "out"
+
+createSets :: [[[(Char, Int)]]]
+createSets =
+    let rs = embedColors <$> ([n0J, n1J, n2J] <*> [3..5]) --runs
+        gs = [g0J, g1J, g2J] <*> [3, 4] -- groups
+    in rs ++ gs
+
 
 writeTFile :: [[(Char, Int)]] -> IO ()
 writeTFile seqs = do
@@ -92,30 +106,33 @@ writeTFile seqs = do
 readTFile :: String -> IO [[Tile RumNum Color]]
 readTFile f = do
     l <- lines <$> readFile f
-    return $ map parseLine l
+    return $ map parseTileSeq l
+
+parseTileSeq :: String -> [Tile RumNum Color]
+parseTileSeq = parseLine
   where
     parseLine l = map parseTile (splitOn "," l)
     parseTile t = let c = (getColor . head) t
                       n = read $ tail t :: Int
                   in if n == 0 then Joker else Tile (toEnum (n - 1) :: RumNum) c
-    getColor 'a' = Black
-    getColor 'b' = Red
-    getColor 'c' = Blue
-    getColor 'd' = Orange
+    getColor :: Char -> Color
+    getColor c = case M.lookup c colorMap of
+                        Just x -> x
+                        Nothing -> error $ "Unknown color char: " ++ [c]
 
 tileToString :: (Char, Int) -> String
 tileToString (c, i) = c:show i
 
 g0J :: Int -> [[(Char, Int)]]
-g0J l = [[(c, n) | c <- cs] | n <- [1..13], cs <- subsets l ['a', 'b', 'c', 'd']]
+g0J l = [[(c, n) | c <- cs] | n <- [1..13], cs <- subsets l colorChars]
 
 g1J :: Int -> [[(Char, Int)]]
-g1J l = [[(c, n) | c <- cs] ++ [('a', 0)] | n <- [1..13], cs <- subsets (l-1) ['a', 'b', 'c', 'd']]
+g1J l = [[(c, n) | c <- cs] ++ [('a', 0)] | n <- [1..13], cs <- subsets (l-1) colorChars]
 
 g2J :: Int -> [[(Char, Int)]]
 g2J l
     | l == 3 = []
-    | otherwise =  [[(c, n) | c <- cs] ++ [('a', 0), ('b', 0)] | n <- [1..13], cs <- subsets (l-2) ['a', 'b', 'c', 'd']]
+    | otherwise =  [[(c, n) | c <- cs] ++ [('a', 0), ('b', 0)] | n <- [1..13], cs <- subsets (l-2) colorChars]
 
 n0J :: Int -> [[Int]]
 n0J l = [[n+l | l <- [0..(l-1)]] | n <- [1..(14-l)]]
@@ -127,7 +144,7 @@ n2J :: Int -> [[Int]]
 n2J l = removeDuplicates $ n2J' l 2 1 []
 
 embedColors :: [[Int]] -> [[(Char, Int)]]
-embedColors l = [[(c, r) | r <- s] | s <- l, c <- ['a', 'b', 'c', 'd']]
+embedColors l = [[(c, r) | r <- s] | s <- l, c <- colorChars]
 
 n1J' :: Int -> Int -> Int -> [[Int]] -> [[Int]]
 n1J' l j n acc
