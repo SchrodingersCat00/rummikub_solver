@@ -23,11 +23,11 @@ dependencies:
 - base >= 4.7 && < 5
 - utility-ht
 - containers
-- hmatrix-glpk
 - split
 - MissingH
 - glpk-hs
 - gasp
+- rainbow
 
 library:
   source-dirs: src

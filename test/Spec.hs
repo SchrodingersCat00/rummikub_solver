@@ -1,6 +1,6 @@
 import Test.QuickCheck
 import qualified Rummikub as R
-import DataTypes ( Tile(..), RumNum(..), Color(..), getSets, createSets )
+import DataTypes ( Tile(..), RumNum(..), Color(..), getSets, createSets, parseTileSeq )
 import Data.List.Utils (countElem)
 import Data.Version(showVersion)
 -- import Prelude hiding (Num(..))
@@ -26,14 +26,14 @@ type Rack = [Tile RumNum Color]
 type Table = [Tile RumNum Color]
 type UniqueSets = [[Tile RumNum Color]]
 
-testData = [ ( [52, 0, 4, 52] -- rack
-             , [0, 4, 8, 12]  -- table
+testData = [ ( parseTileSeq "j0,k1,k2,j0" -- rack
+             , parseTileSeq "k1,k2,k3,k4"  -- table
              , [ [Tile One Black,Tile Two Black,Tile Three Black,Tile Four Black]
                , [Joker,Joker,Tile One Black,Tile Two Black]
                ]              --expected
              )
-           , ( [8, 16, 52, 1, 2]
-             , [0, 4]
+           , ( parseTileSeq "k3,k5,j0,r1,o1"
+             , parseTileSeq "k1,k2"
              , [ [Joker,Tile Two Black,Tile Three Black,Tile Five Black]
                , [Tile One Black,Tile One Red,Tile One Orange]
                ]
@@ -52,9 +52,7 @@ setsTest = do
 fullTests = do
     sets <- getSets
     forM_ testData $ \(r, t, exp) -> do
-        let r' = map toEnum r
-        let t' = map toEnum t
-        let constr = R.lp sets r' t'
+        let constr = R.lp sets r t
         res <- glpSolveVars mipDefaults constr
         let parsed = R.parseLPResult sets res
         quickCheck (compareAsSet parsed exp)

@@ -4,9 +4,21 @@ module Rummikub
     , parseLPResult
     ) where
 
-import DataTypes ( Tile, RumNum, Color, getSets, parseTileSeq )
-import Data.List.Utils (countElem)
+import DataTypes
+    ( Tile
+    , RumNum
+    , Color
+    , getSets
+    , parseTileSeq
+    , formatTileSeq
+    , Rack
+    , Table
+    , UniqueSets
+    )
+import Data.List.Utils (countElem, replace)
+import Data.List (intercalate)
 import System.Environment(getArgs)
+import qualified Display
 -- import Prelude hiding (Num(..))
 
 import Control.Monad.LPMonad
@@ -20,13 +32,9 @@ import Control.Monad.LPMonad
       varLeq )
 import Data.LinearProgram.Common
     ( Direction(Max), LP, linCombination, LinFunc, VarKind(IntVar) )
-import Data.LinearProgram ( mipDefaults, glpSolveVars )
+import Data.LinearProgram ( mipDefaults, glpSolveVars, GLPOpts(..), MsgLev(..) )
 import qualified Data.Map as M
 import Control.Monad ( forM_, when )
-
-type Rack = [Tile RumNum Color]
-type Table = [Tile RumNum Color]
-type UniqueSets = [[Tile RumNum Color]]
 
 yVars :: [String]
 yVars = ['y':show x | x <- [1..53]]
@@ -70,11 +78,15 @@ main = do
     let [rack, table] = map parseTileSeq args
     -- let rack = map toEnum [8, 16, 52, 1, 2]
     -- let table = map toEnum [0, 4]
-    print rack
-    print table
     let constr = lp sets rack table
-    result <- glpSolveVars mipDefaults constr
-    print $ parseLPResult sets result
+    let opts = updateMipDefaults mipDefaults
+    result <- glpSolveVars opts constr
+    let parsed = parseLPResult sets result
+    -- putStrLn $ intercalate ";" $ map formatTileSeq parsed
+    Display.displaySolution rack table parsed
+
+updateMipDefaults :: GLPOpts -> GLPOpts
+updateMipDefaults (MipOpts _ x y z k l m n o) = MipOpts MsgOff x y z k l m n o
 
 parseVarString :: String -> (Int, Char)
 parseVarString s = let v = head s

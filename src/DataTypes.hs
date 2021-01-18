@@ -8,6 +8,10 @@ module DataTypes
     , getSets
     , createSets
     , parseTileSeq
+    , formatTileSeq
+    , Rack
+    , Table
+    , UniqueSets
     ) where
 
 import qualified Data.Set as S
@@ -15,6 +19,10 @@ import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import qualified Data.Map as M
 import Control.Applicative ((<*>))
+
+type Rack = [Tile RumNum Color]
+type Table = [Tile RumNum Color]
+type UniqueSets = [[Tile RumNum Color]]
 
 data Color
     = Black
@@ -101,7 +109,7 @@ writeTFile :: [[(Char, Int)]] -> IO ()
 writeTFile seqs = do
     writeFile "out" tString
   where
-    tString = intercalate "\n" $ map (intercalate "," . map tileToString) seqs
+    tString = intercalate "\n" $ map (intercalate "," . map tileToString') seqs
 
 readTFile :: String -> IO [[Tile RumNum Color]]
 readTFile f = do
@@ -120,8 +128,15 @@ parseTileSeq = parseLine
                         Just x -> x
                         Nothing -> error $ "Unknown color char: " ++ [c]
 
-tileToString :: (Char, Int) -> String
-tileToString (c, i) = c:show i
+formatTileSeq :: [Tile RumNum Color] -> String
+formatTileSeq = intercalate "," . map tileToString
+
+tileToString :: Tile RumNum Color -> String
+tileToString Joker = "j0"
+tileToString (Tile a b) = tileToString' (colorChars!!fromEnum b, fromEnum a)
+
+tileToString' :: (Char, Int) -> String
+tileToString' (c, i) = c:show i
 
 g0J :: Int -> [[(Char, Int)]]
 g0J l = [[(c, n) | c <- cs] | n <- [1..13], cs <- subsets l colorChars]
