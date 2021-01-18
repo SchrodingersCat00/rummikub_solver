@@ -2,22 +2,23 @@
 
 
 module DataTypes
-    ( Tile
-    , Color
-    , RumNum
+    ( Tile(..)
+    , Color(..)
+    , RumNum(..)
     , getSets
     ) where
 
 import qualified Data.Set as S
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
+import Control.Applicative ((<*>))
 
 data Color
     = Red
     | Black
     | Blue
     | Orange
-    deriving ( Enum, Bounded, Show, Eq )
+    deriving ( Enum, Bounded, Show, Eq, Ord )
 
 data RumNum
     = One
@@ -33,12 +34,12 @@ data RumNum
     | Eleven
     | Twelve
     | Thirteen
-    deriving ( Enum, Bounded, Show, Eq )
+    deriving ( Enum, Bounded, Show, Eq, Ord )
 
 data Tile a b -- Number Color
     = Tile a b
     | Joker
-    deriving ( Show, Eq )
+    deriving ( Show, Eq, Ord )
 
 instance (Bounded a, Bounded b) => Bounded (Tile a b) where
     minBound = Tile minBound minBound
@@ -76,23 +77,9 @@ group,four,2J  (78)
 
 getSets :: IO [[Tile RumNum Color]]
 getSets = do
-    let t = [ embedColors $ n0J 3
-            , embedColors $ n0J 4
-            , embedColors $ n0J 5
-            , g0J 3
-            , g0J 4
-            , embedColors $ n1J 3
-            , embedColors $ n1J 4
-            , embedColors $ n1J 5
-            , g1J 3
-            , g1J 4
-            , embedColors $ n2J 3
-            , embedColors $ n2J 4
-            , embedColors $ n2J 5
-            , g2J 3
-            , g2J 4
-            ]
-    writeTFile (concat t)
+    let rs = embedColors <$> ([n0J, n1J, n2J] <*> [3..5]) --runs
+    let gs = [g0J, g1J, g2J] <*> [3, 4] -- groups
+    writeTFile (concat (rs ++ gs))
     -- print $ map length t
     readTFile "out"
 

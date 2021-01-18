@@ -1,5 +1,7 @@
 module Rummikub
     ( main
+    , lp
+    , parseLPResult
     ) where
 
 import DataTypes ( Tile, RumNum, Color, getSets )
@@ -33,7 +35,6 @@ xVars = ['x':show x | x <- [1..1173]]
 
 objFun :: LinFunc String Int
 objFun = linCombination (zip (repeat 1) yVars)
--- objFun = linCombination [(10, "x1"), (6, "x2"), (4, "x3")]
 
 lp :: UniqueSets -> Rack -> Table -> LP String Int
 lp sets r t = execLPM $ do
@@ -66,10 +67,10 @@ main = do
     -- let table = map toEnum [0, 4, 8, 1,
     -- let table = map toEnum [29, 5, 9, 2, 6, 10]
     -- let rack = map toEnum [1, 37, 8, 10, 14, 22, 23, 20, 50]
-    -- let rack = map toEnum [52, 0, 4, 52]
-    -- let table = map toEnum [0, 4, 8, 12]
-    let rack = map toEnum [8, 16, 52, 1, 2]
-    let table = map toEnum [0, 4]
+    let rack = map toEnum [52, 0, 4, 52]
+    let table = map toEnum [0, 4, 8, 12]
+    -- let rack = map toEnum [8, 16, 52, 1, 2]
+    -- let table = map toEnum [0, 4]
     print rack
     print table
     let constr = lp sets rack table
