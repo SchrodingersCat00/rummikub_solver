@@ -4,102 +4,21 @@ module Rummikub
     , parseLPResult
     ) where
 
-import DataTypes
-    ( Tile
-    , RumNum
-    , Color
-    , getSets
-    , parseTileSeq
-    , formatTileSeq
-    , Rack
-    , Table
-    , UniqueSets
-    )
-import Data.List.Utils (countElem, replace)
-import Data.List (intercalate)
-import System.Environment(getArgs)
+
+import           Control.Monad             (forM_, when)
+import           Control.Monad.LPMonad     (equalTo, execLPM, setDirection,
+                                            setObjective, setVarKind, varBds,
+                                            varEq, varLeq)
+import           Data.LinearProgram        (GLPOpts (..), MsgLev (..),
+                                            glpSolveVars, mipDefaults)
+import           Data.LinearProgram.Common (Direction (Max), LP, LinFunc,
+                                            VarKind (IntVar), linCombination)
+import           Data.List.Utils           (countElem)
+import qualified Data.Map                  as M
+import           DataTypes                 (Rack, RumTile, Table, TileSet,
+                                            UniqueSets, getSets, parseTileSeq)
 import qualified Display
--- import Prelude hiding (Num(..))
-
-import Control.Monad.LPMonad
-    ( equalTo,
-      execLPM,
-      setDirection,
-      setObjective,
-      setVarKind,
-      varBds,
-      varEq,
-      varLeq )
-import Data.LinearProgram.Common
-    ( Direction(Max), LP, linCombination, LinFunc, VarKind(IntVar) )
-import Data.LinearProgram ( mipDefaults, glpSolveVars, GLPOpts(..), MsgLev(..) )
-import qualified Data.Map as M
-import Control.Monad ( forM_, when )
-
-yVars :: [String]
-yVars = ['y':show x | x <- [1..53]]
-
-xVars :: [String]
-xVars = ['x':show x | x <- [1..1173]]
-
-objFun :: LinFunc String Int
-objFun = linCombination (zip (repeat 1) yVars)
-
-lp :: UniqueSets -> Rack -> Table -> LP String Int
-lp sets r t = execLPM $ do
-    setDirection Max
-    setObjective objFun
-    forM_ xVars $ \x ->
-        do  varBds x 0 2
-            setVarKind x IntVar
-
-    forM_ (zip yVars [0..]) $ \(l, y) ->
-        do  varBds l 0 2
-            let r_i = countInSet r (toEnum y)
-            -- upper bound can't be the same as lower for some reason
-            when (r_i == 0) (varEq l 0)
-            when (r_i /= 0) (varLeq l r_i)
-            setVarKind l IntVar
-            equalTo (linCombination (someHelp sets y)) (countInSet t (toEnum y))
-
-someHelp :: UniqueSets -> Int -> [(Int, String)]
-someHelp sets tid = zip [if x == tid then -1 else 0 | x <- [0..52]] yVars ++ zip [ countInSet (sets!!sid) (toEnum tid) | sid <- [0..1172]] xVars
-
-main :: IO ()
-main = do
-    -- let rack = map toEnum [12, 7, 11]
-    -- let rack = map toEnum []
-    -- let table = map toEnum [29, 30, 31, 44, 45, 46, 47, 32, 33, 34, 35, 39, 43, 47, 51, 40, 41, 42, 34, 38, 42]
-    sets <- getSets
-    -- let table = map toEnum [0, 4, 8, 1,
-    -- let table = map toEnum [29, 5, 9, 2, 6, 10]
-    -- let rack = map toEnum [1, 37, 8, 10, 14, 22, 23, 20, 50]
-    args <- getArgs
-    let [rack, table] = map parseTileSeq args
-    -- let rack = map toEnum [8, 16, 52, 1, 2]
-    -- let table = map toEnum [0, 4]
-    let constr = lp sets rack table
-    let opts = updateMipDefaults mipDefaults
-    result <- glpSolveVars opts constr
-    let parsed = parseLPResult sets result
-    -- putStrLn $ intercalate ";" $ map formatTileSeq parsed
-    Display.displaySolution rack table parsed
-
-updateMipDefaults :: GLPOpts -> GLPOpts
-updateMipDefaults (MipOpts _ x y z k l m n o) = MipOpts MsgOff x y z k l m n o
-
-parseVarString :: String -> (Int, Char)
-parseVarString s = let v = head s
-                       n = (read . tail) s :: Int
-                    in (n, v)
-
-parseLPResult sets (_, Just (v, d)) = M.foldrWithKey (\k v l -> let (n, c) = parseVarString k in if v > 0 && c == 'x' then sets!!(n-1):l else l) [] d
-
-countInSet :: Table -> Tile RumNum Color -> Int
-countInSet t tl = let c = countElem tl t in
-                        if c > 2 then
-                            error "tile is more than twice on the table"
-                        else c
+import           System.Environment        (getArgs)
 
 {-
     source: https://www.semanticscholar.org/paper/Solving-Rummikub-Problems-by-Integer-Linear-Hertog-Hulshof/ab00c1bfe35e21a2edb7287234af03f74a3ee3ae
@@ -132,3 +51,64 @@ countInSet t tl = let c = countElem tl t in
     x_j el {0, 1, 2} forall j
     y_i el {0, 1, 2} forall i
 -}
+
+-- |Generate string names for tile variables
+yVars :: [String]
+yVars = ['y':show x | x <- [1..53]]
+
+-- |Generate string names for set variables
+xVars :: [String]
+xVars = ['x':show x | x <- [1..1173]]
+
+-- |Linear function to maximize
+objFun :: LinFunc String Int
+objFun = linCombination (zip (repeat 1) yVars)
+
+-- |Describes constraints for the Rummikub problem
+lp :: UniqueSets -> Rack -> Table -> LP String Int
+lp sets r t = execLPM $ do
+    setDirection Max
+    setObjective objFun
+    forM_ xVars $ \j ->
+        do  varBds j 0 2
+            setVarKind j IntVar
+
+    forM_ (zip yVars [0..]) $ \(l, i) ->
+        do  varBds l 0 2
+            let r_i = countInSet r (toEnum i)
+            -- in GLPK upper bound can't be the same as lower for some reason
+            when (r_i == 0) (varEq l 0)
+            when (r_i /= 0) (varLeq l r_i)
+            setVarKind l IntVar
+            equalTo (linCombination (constrUtil i)) (countInSet t (toEnum i))
+  where
+    -- |Creates first constraint for a given i
+    constrUtil tid =
+        zip [if x == tid then -1 else 0 | x <- [0..52]] yVars ++
+        zip [ countInSet (sets!!sid) (toEnum tid) | sid <- [0..1172]] xVars
+
+parseLPResult sets (_, Just (v, d)) = M.foldrWithKey (\k v l -> let (n, c) = parseLPVarString k in if v > 0 && c == 'x' then sets!!(n-1):l else l) [] d
+  where
+    parseLPVarString :: String -> (Int, Char)
+    parseLPVarString s = let v = head s
+                             n = (read . tail) s :: Int
+                         in (n, v)
+
+-- |Counts tile in set and raises error if amount > 2
+countInSet :: TileSet -> RumTile -> Int
+countInSet t tl =
+    let c = countElem tl t in
+        if c > 2 then
+            error $ "Tile is more than twice on the table: " <> show tl
+        else c
+
+main :: IO ()
+main = do
+    uniqSets <- getSets
+    args <- getArgs
+    let [rack, table] = map parseTileSeq args
+    let constr = lp uniqSets rack table
+    let opts = mipDefaults { msgLev = MsgOff }
+    result <- glpSolveVars opts constr
+    let parsed = parseLPResult uniqSets result
+    Display.displaySolution rack table parsed

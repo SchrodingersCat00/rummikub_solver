@@ -1,6 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-
 module DataTypes
     ( Tile(..)
     , Color(..)
@@ -12,17 +11,23 @@ module DataTypes
     , Rack
     , Table
     , UniqueSets
+    , RumTile
+    , TileSet
     ) where
 
-import qualified Data.Set as S
-import Data.List (intercalate)
-import Data.List.Split (splitOn)
-import qualified Data.Map as M
-import Control.Applicative ((<*>))
+-- TODO: clean up this file
 
-type Rack = [Tile RumNum Color]
-type Table = [Tile RumNum Color]
-type UniqueSets = [[Tile RumNum Color]]
+import           Control.Applicative ((<*>))
+import           Data.List           (intercalate)
+import           Data.List.Split     (splitOn)
+import qualified Data.Map            as M
+import qualified Data.Set            as S
+
+type RumTile = Tile RumNum Color
+type TileSet = [RumTile]
+type Rack = TileSet
+type Table = TileSet
+type UniqueSets = [TileSet]
 
 data Color
     = Black
@@ -81,7 +86,7 @@ group,four,1J  (52)
 
 run,three,2J   (52)
 run,four,2J    (132)
-run,five,2J    (233) -> (232?)
+run,five,2J    (232)
 group,three,2J (0)
 group,four,2J  (78)
 -}
@@ -92,7 +97,7 @@ colorChars = ['k', 'r', 'o', 'b']
 colorMap :: M.Map Char Color
 colorMap = M.fromList (zip colorChars [Black ..])
 
-getSets :: IO [[Tile RumNum Color]]
+getSets :: IO UniqueSets
 getSets = do
     let t = createSets
     writeTFile (concat t)
@@ -111,12 +116,12 @@ writeTFile seqs = do
   where
     tString = intercalate "\n" $ map (intercalate "," . map tileToString') seqs
 
-readTFile :: String -> IO [[Tile RumNum Color]]
+readTFile :: String -> IO UniqueSets
 readTFile f = do
     l <- lines <$> readFile f
     return $ map parseTileSeq l
 
-parseTileSeq :: String -> [Tile RumNum Color]
+parseTileSeq :: String -> TileSet
 parseTileSeq = parseLine
   where
     parseLine l = map parseTile (splitOn "," l)
@@ -125,19 +130,19 @@ parseTileSeq = parseLine
                   in if head t == 'j' then Joker else Tile (toEnum (n - 1) :: RumNum) c
     getColor :: Char -> Color
     getColor c = case M.lookup c colorMap of
-                        Just x -> x
+                        Just x  -> x
                         Nothing -> error $ "Unknown color char: " ++ [c]
 
-formatTileSeq :: [Tile RumNum Color] -> String
+formatTileSeq :: TileSet -> String
 formatTileSeq = intercalate "," . map tileToString
 
-tileToString :: Tile RumNum Color -> String
-tileToString Joker = "j"
+tileToString :: RumTile -> String
+tileToString Joker      = "j"
 tileToString (Tile a b) = tileToString' (colorChars!!fromEnum b, fromEnum a)
 
 tileToString' :: (Char, Int) -> String
 tileToString' ('j', i) = "j"
-tileToString' (c, i) = c:show i
+tileToString' (c, i)   = c:show i
 
 g0J :: Int -> [[(Char, Int)]]
 g0J l = [[(c, n) | c <- cs] | n <- [1..13], cs <- subsets l colorChars]
@@ -176,6 +181,6 @@ removeDuplicates :: (Ord a) => [a] -> [a]
 removeDuplicates = S.toList . S.fromList
 
 subsets :: Int -> [a] -> [[a]]
-subsets 0 _ = [[]]
-subsets _ [] = []
+subsets 0 _        = [[]]
+subsets _ []       = []
 subsets n (x : xs) = map (x :) (subsets (n - 1) xs) ++ subsets n xs
